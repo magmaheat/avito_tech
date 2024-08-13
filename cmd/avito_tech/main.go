@@ -2,9 +2,11 @@ package main
 
 import (
 	"avito_tech/internal/config"
+	"avito_tech/internal/http_server/handlers/house"
 	"avito_tech/internal/lib/logger/slg"
 	"avito_tech/internal/storage/postgres"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"log/slog"
 	"net/http"
 	"os"
@@ -31,6 +33,11 @@ func main() {
 	_ = storage
 
 	router := chi.NewRouter()
+
+	router.Use(middleware.RequestID)
+	router.Use(middleware.Recoverer)
+
+	router.Post("/house/create", house.Create(log, storage))
 
 	log.Info("starting server", slog.String("address", cfg.Address))
 
