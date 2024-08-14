@@ -39,7 +39,7 @@ func main() {
 	router.Use(middleware.URLFormat)
 
 	router.Post("/house/create", house.Create(log, storage))
-	//router.Get("/house/{id}", house.Get(log, storage))
+	router.Get("/house/{id}", house.Flats(log, storage))
 
 	log.Info("starting server", slog.String("address", cfg.Address))
 

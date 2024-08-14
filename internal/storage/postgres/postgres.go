@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"avito_tech/internal/entity"
 	"context"
 	"fmt"
 	"github.com/Masterminds/squirrel"
@@ -10,17 +11,6 @@ import (
 
 type Storage struct {
 	db *pgxpool.Pool
-}
-
-type House struct {
-	id        int64
-	address   string
-	year      int64
-	developer interface{}
-	createdFl time.Time
-}
-
-type Flat struct {
 }
 
 func New(storagePath string) (*Storage, error) {
@@ -68,7 +58,7 @@ func New(storagePath string) (*Storage, error) {
 			id SERIAL PRIMARY KEY,
 			user_id UUID REFERENCES users(id) ON DELETE CASCADE,
 			house_id INTEGER NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
-			number_flat INTEGER NOT NULL,
+			number INTEGER NOT NULL,
 			price INTEGER NOT NULL CHECK (price >= 0),
 			rooms INTEGER NOT NULL CHECK (rooms >= 1),
 			status VARCHAR(50) NOT NULL CHECK (status IN ('created', 'approved', 'declined', 'on moderation'))
@@ -83,27 +73,20 @@ func New(storagePath string) (*Storage, error) {
 	return &Storage{db: pool}, nil
 }
 
-func (s *Storage) Create(id, year int64, address, developer string) error {
+func (s *Storage) Create(house entity.House) error {
 	const fn = "storage.postgres.CreateHouse"
 
 	var developerValue interface{}
-	if developer == "" {
+	if house.Developer == "" {
 		developerValue = nil
 	} else {
-		developerValue = developer
-	}
-
-	house := House{
-		address:   address,
-		year:      year,
-		developer: developerValue,
-		createdFl: time.Now(),
+		developerValue = house.Developer
 	}
 
 	query, args, err := squirrel.
 		Insert("houses").
-		Columns("address", "year", "developer", "created_at").
-		Values(house.address, house.year, house.developer, time.Now()).
+		Columns("id", "address", "year", "developer", "created_at").
+		Values(house.ID, house.Address, house.Year, developerValue, time.Now()).
 		PlaceholderFormat(squirrel.Dollar).
 		ToSql()
 
@@ -120,9 +103,46 @@ func (s *Storage) Create(id, year int64, address, developer string) error {
 	return nil
 }
 
-//func (s *Storage) Get(id int64) (int64, error) {
-//
-//}
+func (s *Storage) GetFlats(id int64) ([]entity.Flat, error) {
+	const fn = "storage.postgres.Get"
+	ctx := context.Background()
+
+	rows, err := s.db.Query(ctx, `
+		SELECT *
+		FROM flats
+		WHERE house_id = $1
+	`, id)
+
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+	defer rows.Close()
+
+	var flats []entity.Flat
+
+	for rows.Next() {
+		var flat entity.Flat
+		err := rows.Scan(
+			&flat.ID,
+			&flat.UserID,
+			&flat.HouseID,
+			&flat.Number,
+			&flat.Price,
+			&flat.Rooms,
+			&flat.Status,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", fn, err)
+		}
+		flats = append(flats, flat)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	return flats, nil
+}
 
 //CREATE OR REPLACE FUNCTION update_last_flat_added()
 //RETURNS TRIGGER AS $$
