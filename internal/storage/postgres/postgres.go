@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
 )
@@ -103,15 +104,27 @@ func (s *Storage) Create(house entity.House) error {
 	return nil
 }
 
-func (s *Storage) GetFlats(id int64) ([]entity.Flat, error) {
+func (s *Storage) GetFlats(id int64, role string) ([]entity.Flat, error) {
 	const fn = "storage.postgres.Get"
 	ctx := context.Background()
 
-	rows, err := s.db.Query(ctx, `
-		SELECT *
-		FROM flats
-		WHERE house_id = $1
-	`, id)
+	var rows pgx.Rows
+	var err error
+
+	if role != "moderator" {
+		rows, err = s.db.Query(ctx, `
+			SELECT *
+			FROM flats
+			WHERE house_id = $1 and status = 'approved'
+		`, id)
+
+	} else {
+		rows, err = s.db.Query(ctx, `
+			SELECT *
+			FROM flats
+			WHERE house_id = $1
+		`, id)
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", fn, err)

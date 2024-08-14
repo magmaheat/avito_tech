@@ -2,6 +2,7 @@ package main
 
 import (
 	"avito_tech/internal/config"
+	"avito_tech/internal/http_server/handlers/auth"
 	"avito_tech/internal/http_server/handlers/house"
 	"avito_tech/internal/lib/logger/slg"
 	"avito_tech/internal/storage/postgres"
@@ -19,6 +20,7 @@ const (
 )
 
 func main() {
+	os.Setenv("MY_SIGNING_KEY", "pussy")
 	os.Setenv("CONFIG_PATH", "../../config/local.yaml")
 	cfg := config.MustLoad()
 
@@ -30,16 +32,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	_ = storage
-
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	router.Post("/house/create", house.Create(log, storage))
-	router.Get("/house/{id}", house.Flats(log, storage))
+	router.Get("/dummyLogin", auth.DummyLogin(log))
+	//router.Post("/register")
+	router.Post("/house/create", auth.RequireModerator(log, auth.JWTAuth(log, house.Create(log, storage))))
+	router.Get("/house/{id}", auth.JWTAuth(log, house.Flats(log, storage)))
 
 	log.Info("starting server", slog.String("address", cfg.Address))
 

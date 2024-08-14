@@ -24,8 +24,7 @@ type ResponseFlats struct {
 
 type Storage interface {
 	Create(house entity.House) error
-	//GetFlatsModeration(idHouse int64) ([]entity.Flat, error)
-	GetFlats(idHouse int64) ([]entity.Flat, error)
+	GetFlats(idHouse int64, role string) ([]entity.Flat, error)
 }
 
 func Create(log *slog.Logger, storage Storage) http.HandlerFunc {
@@ -33,10 +32,7 @@ func Create(log *slog.Logger, storage Storage) http.HandlerFunc {
 		const fn = "handlers.house.Create"
 		reqID := middleware.GetReqID(r.Context())
 
-		log = log.With(
-			slog.String("fn", fn),
-			slog.String("request_id", reqID),
-		)
+		log = setupLogger(fn, reqID)
 
 		var req entity.House
 
@@ -73,11 +69,9 @@ func Flats(log *slog.Logger, storage Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const fn = "handlers.house.Flats"
 		reqID := middleware.GetReqID(r.Context())
+		role := r.Context().Value("role").(string)
 
-		log.With(
-			slog.String("fn", fn),
-			slog.String("request_id", reqID),
-		)
+		log = setupLogger(fn, reqID)
 
 		id := chi.URLParam(r, "id")
 		if id == "" {
@@ -90,10 +84,14 @@ func Flats(log *slog.Logger, storage Storage) http.HandlerFunc {
 
 		newID, _ := strconv.Atoi(id)
 
-		resFlats, err := storage.GetFlats(int64(newID))
+		var resFlats []entity.Flat
+		var err error
+
+		resFlats, err = storage.GetFlats(int64(newID), role)
+
 		if err != nil {
 			message := "failed to get flats"
-			log.Error(message)
+			log.Error(fn, map[string]error{message: err})
 			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, map[string]string{"message": message, "request_id": reqID})
 			return
@@ -107,4 +105,11 @@ func Flats(log *slog.Logger, storage Storage) http.HandlerFunc {
 		})
 
 	}
+}
+
+func setupLogger(fn, reqID string) *slog.Logger {
+	return slog.With(
+		slog.String("fn", fn),
+		slog.String("id_request", reqID),
+	)
 }
