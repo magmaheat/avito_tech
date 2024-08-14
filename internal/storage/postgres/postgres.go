@@ -13,10 +13,14 @@ type Storage struct {
 }
 
 type House struct {
+	id        int64
 	address   string
 	year      int64
-	developer string
+	developer interface{}
 	createdFl time.Time
+}
+
+type Flat struct {
 }
 
 func New(storagePath string) (*Storage, error) {
@@ -31,7 +35,7 @@ func New(storagePath string) (*Storage, error) {
 	// TODO add sql injections
 	_, err = pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS houses (
-			id SERIAL PRIMARY KEY,
+			id INTEGER PRIMARY KEY,
 			address TEXT NOT NULL,
 			year INTEGER NOT NULL CHECK (year >= 0),
 			developer TEXT NULL,
@@ -79,20 +83,27 @@ func New(storagePath string) (*Storage, error) {
 	return &Storage{db: pool}, nil
 }
 
-func (s *Storage) Create(address string, year int64, developer string) error {
+func (s *Storage) Create(id, year int64, address, developer string) error {
 	const fn = "storage.postgres.CreateHouse"
+
+	var developerValue interface{}
+	if developer == "" {
+		developerValue = nil
+	} else {
+		developerValue = developer
+	}
 
 	house := House{
 		address:   address,
 		year:      year,
-		developer: developer,
+		developer: developerValue,
 		createdFl: time.Now(),
 	}
 
 	query, args, err := squirrel.
 		Insert("houses").
 		Columns("address", "year", "developer", "created_at").
-		Values(house.address, house.year, house.developer, house.createdFl).
+		Values(house.address, house.year, house.developer, time.Now()).
 		PlaceholderFormat(squirrel.Dollar).
 		ToSql()
 
@@ -108,6 +119,10 @@ func (s *Storage) Create(address string, year int64, developer string) error {
 
 	return nil
 }
+
+//func (s *Storage) Get(id int64) (int64, error) {
+//
+//}
 
 //CREATE OR REPLACE FUNCTION update_last_flat_added()
 //RETURNS TRIGGER AS $$

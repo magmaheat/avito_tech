@@ -9,6 +9,7 @@ import (
 )
 
 type Request struct {
+	Id        int64  `json:"id"`
 	Address   string `json:"address"`
 	Year      int64  `json:"year"`
 	Developer string `json:"developer"`
@@ -20,11 +21,12 @@ type Response struct {
 	RequestID string `json:"request_id"`
 }
 
-type House interface {
-	Create(address string, year int64, developer string) error
+type Storage interface {
+	Create(id, year int64, address, developer string) error
+	//Get(id int64) error
 }
 
-func Create(log *slog.Logger, house House) http.HandlerFunc {
+func Create(log *slog.Logger, storage Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const fn = "handlers.house.Create"
 		reqId := middleware.GetReqID(r.Context())
@@ -41,32 +43,30 @@ func Create(log *slog.Logger, house House) http.HandlerFunc {
 			message := "failed to decode request body"
 			log.Error(message, slg.Err(err))
 			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, Response{
-				Message:   message,
-				RequestID: reqId,
-			})
+			render.JSON(w, r, answer(message, reqId))
 			return
 		}
 
-		err = house.Create(req.Address, req.Year, req.Developer)
+		err = storage.Create(req.Id, req.Year, req.Address, req.Developer)
 		if err != nil {
 			message := "failed to add house"
 			log.Error(message, slg.Err(err))
 			render.Status(r, http.StatusInternalServerError)
-			render.JSON(w, r, Response{
-				Message:   message,
-				RequestID: reqId,
-			})
+			render.JSON(w, r, answer(message, reqId))
 			return
 		}
 
 		message := "house added"
 		log.Info(message)
 
-		render.JSON(w, r, Response{
-			Message:   message,
-			RequestID: reqId,
-		})
+		render.JSON(w, r, answer(message, reqId))
 
+	}
+}
+
+func answer(msg, reqId string) Response {
+	return Response{
+		Message:   msg,
+		RequestID: reqId,
 	}
 }
