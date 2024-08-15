@@ -11,19 +11,19 @@ import (
 	"strconv"
 )
 
-type ResponseCreate struct {
+type ResponseCreateHouse struct {
 	Message   string       `json:"message"`
 	RequestID string       `json:"request_id"`
-	Body      entity.House `json:"body"`
+	House     entity.House `json:"house"`
 }
 
 type ResponseFlats struct {
 	Status string        `json:"status"`
-	Body   []entity.Flat `json:"body"`
+	Flat   []entity.Flat `json:"flat"`
 }
 
 type Storage interface {
-	CreateHouse(house entity.House) error
+	CreateH(house entity.House) (int64, error)
 	GetFlats(idHouse int64, role string) ([]entity.Flat, error)
 }
 
@@ -45,7 +45,7 @@ func Create(log *slog.Logger, storage Storage) http.HandlerFunc {
 			return
 		}
 
-		err = storage.CreateHouse(req)
+		id, err := storage.CreateH(req)
 		if err != nil {
 			message := "failed to add house"
 			log.Error(message, slg.Err(err))
@@ -54,13 +54,14 @@ func Create(log *slog.Logger, storage Storage) http.HandlerFunc {
 			return
 		}
 
+		req.ID = id
 		message := "house added"
 		log.Info(message)
 
-		render.JSON(w, r, ResponseCreate{
+		render.JSON(w, r, ResponseCreateHouse{
 			Message:   message,
 			RequestID: reqID,
-			Body:      req,
+			House:     req,
 		})
 	}
 }
@@ -101,8 +102,7 @@ func Flats(log *slog.Logger, storage Storage) http.HandlerFunc {
 
 		render.JSON(w, r, ResponseFlats{
 			Status: "Ok",
-			Body:   resFlats,
+			Flat:   resFlats,
 		})
-
 	}
 }

@@ -1,7 +1,7 @@
 package entity
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/google/uuid"
 	"time"
 )
 
@@ -15,16 +15,18 @@ type House struct {
 }
 
 type Flat struct {
-	HouseID int64  `json:"house_id"`
-	Number  int64  `json:"number"`
-	Price   int64  `json:"price"`
-	Rooms   int64  `json:"rooms"`
-	Status  string `json:"status"`
+	ID      int64     `json:"id"`
+	UserID  uuid.UUID `json:"user_id"`
+	HouseID int64     `json:"house_id"`
+	Number  int64     `json:"number"`
+	Price   int64     `json:"price"`
+	Rooms   int64     `json:"rooms"`
+	Status  string    `json:"status"`
 }
 
 type User struct {
-	ID       pgtype.UUID `json:"id"`
-	Email    string      `json:"email"`
-	Password string      `json:"password"`
-	UserType string      `json:"user_type"`
+	ID       uuid.UUID `json:"id"`
+	Email    string    `json:"email"`
+	Password string    `json:"password"`
+	UserType string    `json:"user_type"`
 }

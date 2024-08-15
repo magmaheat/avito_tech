@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
@@ -57,6 +58,7 @@ func New(storagePath string) (*Storage, error) {
 	_, err = pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS flats (
 			id SERIAL PRIMARY KEY,
+			user_id UUID NOT NULL REFERENCES users(id),
 			house_id INTEGER NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
 			number INTEGER NOT NULL,
 			price INTEGER NOT NULL CHECK (price >= 0),
@@ -83,7 +85,33 @@ func New(storagePath string) (*Storage, error) {
 	return &Storage{db: pool}, nil
 }
 
-func (s *Storage) CreateHouse(house entity.House) error {
+func (s *Storage) CreateUser(user entity.User, hashPassword string) (uuid.UUID, error) {
+	const fn = "storage.postgres.CreateUser"
+
+	query, args, err := squirrel.
+		Insert("users").
+		Columns("email", "password", "user_type").
+		Values(user.Email, hashPassword, user.UserType).
+		Suffix("RETURNING id").
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
+
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	var id uuid.UUID
+	ctx := context.Background()
+
+	err = s.db.QueryRow(ctx, query, args...).Scan(&id)
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	return id, nil
+}
+
+func (s *Storage) CreateH(house entity.House) (int64, error) {
 	const fn = "storage.postgres.CreateHouse"
 
 	var developerValue interface{}
@@ -97,20 +125,23 @@ func (s *Storage) CreateHouse(house entity.House) error {
 		Insert("houses").
 		Columns("id", "address", "year", "developer", "created_at").
 		Values(house.ID, house.Address, house.Year, developerValue, time.Now()).
+		Suffix("RETURNING id").
 		PlaceholderFormat(squirrel.Dollar).
 		ToSql()
 
 	if err != nil {
-		return fmt.Errorf("%s: %w", fn, err)
+		return -1, fmt.Errorf("%s: %w", fn, err)
 	}
 
+	var id int64
 	ctx := context.Background()
-	_, err = s.db.Exec(ctx, query, args...)
+
+	err = s.db.QueryRow(ctx, query, args...).Scan(&id)
 	if err != nil {
-		return fmt.Errorf("%s: %w", fn, err)
+		return -1, fmt.Errorf("%s: %w", fn, err)
 	}
 
-	return nil
+	return id, nil
 }
 
 func (s *Storage) GetFlats(id int64, role string) ([]entity.Flat, error) {
@@ -122,7 +153,7 @@ func (s *Storage) GetFlats(id int64, role string) ([]entity.Flat, error) {
 
 	if role != "moderator" {
 		rows, err = s.db.Query(ctx, `
-			SELECT house_id, number, price, rooms
+			SELECT *
 			FROM flats
 			WHERE house_id = $1 and status = 'approved'
 		`, id)
@@ -164,29 +195,44 @@ func (s *Storage) GetFlats(id int64, role string) ([]entity.Flat, error) {
 	return flats, nil
 }
 
-func (s *Storage) CreateFlat(flat entity.Flat) error {
+func (s *Storage) CreateF(flat entity.Flat) (int64, error) {
 	const fn = "storage.postgres.CreateFlag"
 
 	query, args, err := squirrel.
 		Insert("flats").
-		Columns("house_id", "number", "price", "rooms", "status").
-		Values(flat.HouseID, flat.Number, flat.Price, flat.Rooms, "created").
+		Columns("user_id", "house_id", "number", "price", "rooms", "status").
+		Values(flat.UserID, flat.HouseID, flat.Number, flat.Price, flat.Rooms, "created").
+		Suffix("RETURNING id").
 		PlaceholderFormat(squirrel.Dollar).
 		ToSql()
 
 	if err != nil {
-		return fmt.Errorf("%s: %w", fn, err)
+		return -1, fmt.Errorf("%s: %w", fn, err)
 	}
 
+	var id int64
 	ctx := context.Background()
-	_, err = s.db.Exec(ctx, query, args...)
+
+	err = s.db.QueryRow(ctx, query, args...).Scan(&id)
 
 	if err != nil {
-		return fmt.Errorf("%s: %w", fn, err)
+		return -1, fmt.Errorf("%s: %w", fn, err)
 	}
 
-	return nil
+	return id, nil
 }
+
+//
+//func (s *Storage) Update(flat entity.Flat) error {
+//	const fn = "storage.postgres.Update"
+//
+//}
+
+//func (s *Storage) checkStatus(id int64) {
+//	const fn = "storage.postgres.checkStatus"
+//
+//	row, err := s.db.Query("")
+//}
 
 //CREATE OR REPLACE FUNCTION update_last_flat_added()
 //RETURNS TRIGGER AS $$
