@@ -8,3 +8,10 @@ func Err(err error) slog.Attr {
 		Value: slog.StringValue(err.Error()),
 	}
 }
+
+func SetupLogger(fn, reqID string) *slog.Logger {
+	return slog.With(
+		slog.String("fn", fn),
+		slog.String("id_request", reqID),
+	)
+}

@@ -23,7 +23,7 @@ type ResponseFlats struct {
 }
 
 type Storage interface {
-	Create(house entity.House) error
+	CreateHouse(house entity.House) error
 	GetFlats(idHouse int64, role string) ([]entity.Flat, error)
 }
 
@@ -32,7 +32,7 @@ func Create(log *slog.Logger, storage Storage) http.HandlerFunc {
 		const fn = "handlers.house.Create"
 		reqID := middleware.GetReqID(r.Context())
 
-		log = setupLogger(fn, reqID)
+		log = slg.SetupLogger(fn, reqID)
 
 		var req entity.House
 
@@ -45,7 +45,7 @@ func Create(log *slog.Logger, storage Storage) http.HandlerFunc {
 			return
 		}
 
-		err = storage.Create(req)
+		err = storage.CreateHouse(req)
 		if err != nil {
 			message := "failed to add house"
 			log.Error(message, slg.Err(err))
@@ -71,7 +71,7 @@ func Flats(log *slog.Logger, storage Storage) http.HandlerFunc {
 		reqID := middleware.GetReqID(r.Context())
 		role := r.Context().Value("role").(string)
 
-		log = setupLogger(fn, reqID)
+		log = slg.SetupLogger(fn, reqID)
 
 		id := chi.URLParam(r, "id")
 		if id == "" {
@@ -105,11 +105,4 @@ func Flats(log *slog.Logger, storage Storage) http.HandlerFunc {
 		})
 
 	}
-}
-
-func setupLogger(fn, reqID string) *slog.Logger {
-	return slog.With(
-		slog.String("fn", fn),
-		slog.String("id_request", reqID),
-	)
 }

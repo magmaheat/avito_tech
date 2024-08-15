@@ -26,7 +26,7 @@ func DummyLogin(log *slog.Logger) http.HandlerFunc {
 		const fn = "handlers.auth.DummyLogin"
 		reqID := middleware.GetReqID(r.Context())
 
-		log = setupLogger(fn, reqID)
+		log = slg.SetupLogger(fn, reqID)
 
 		var user entity.User
 
@@ -67,7 +67,7 @@ func Register(log *slog.Logger, storage Storage) http.HandlerFunc {
 		const fn = "handlers.auth.register"
 		reqID := middleware.GetReqID(r.Context())
 
-		log = setupLogger(fn, reqID)
+		log = slg.SetupLogger(fn, reqID)
 
 		var user entity.User
 
@@ -90,7 +90,7 @@ func JWTAuth(log *slog.Logger, next http.Handler) http.HandlerFunc {
 		const fn = "handlers.auth.JWTModerator"
 		reqID := middleware.GetReqID(r.Context())
 
-		log = setupLogger(fn, reqID)
+		log = slg.SetupLogger(fn, reqID)
 
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -137,7 +137,7 @@ func RequireModerator(log *slog.Logger, next http.Handler) http.HandlerFunc {
 		reqID := middleware.GetReqID(r.Context())
 		role := r.Context().Value("role").(string)
 
-		log = setupLogger(fn, reqID)
+		log = slg.SetupLogger(fn, reqID)
 
 		if role != "moderator" {
 			message := "Forbidden"
@@ -149,11 +149,4 @@ func RequireModerator(log *slog.Logger, next http.Handler) http.HandlerFunc {
 
 		next.ServeHTTP(w, r)
 	}
-}
-
-func setupLogger(fn, reqID string) *slog.Logger {
-	return slog.With(
-		slog.String("fn", fn),
-		slog.String("id_request", reqID),
-	)
 }

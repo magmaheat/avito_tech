@@ -15,13 +15,11 @@ type House struct {
 }
 
 type Flat struct {
-	ID      int64       `json:"id"`
-	UserID  pgtype.UUID `json:"user_id"`
-	HouseID int64       `json:"house_id"`
-	Number  int64       `json:"number"`
-	Price   int64       `json:"price"`
-	Rooms   int64       `json:"rooms"`
-	Status  string      `json:"status"`
+	HouseID int64  `json:"house_id"`
+	Number  int64  `json:"number"`
+	Price   int64  `json:"price"`
+	Rooms   int64  `json:"rooms"`
+	Status  string `json:"status"`
 }
 
 type User struct {

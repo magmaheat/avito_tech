@@ -57,7 +57,6 @@ func New(storagePath string) (*Storage, error) {
 	_, err = pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS flats (
 			id SERIAL PRIMARY KEY,
-			user_id UUID REFERENCES users(id) ON DELETE CASCADE,
 			house_id INTEGER NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
 			number INTEGER NOT NULL,
 			price INTEGER NOT NULL CHECK (price >= 0),
@@ -71,10 +70,20 @@ func New(storagePath string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
 
+	_, err = pool.Exec(ctx, `
+		CREATE INDEX IF NOT EXISTS idx_flats_house_id_status
+		ON flats (house_id, status);
+	`)
+
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+
 	return &Storage{db: pool}, nil
 }
 
-func (s *Storage) Create(house entity.House) error {
+func (s *Storage) CreateHouse(house entity.House) error {
 	const fn = "storage.postgres.CreateHouse"
 
 	var developerValue interface{}
@@ -113,7 +122,7 @@ func (s *Storage) GetFlats(id int64, role string) ([]entity.Flat, error) {
 
 	if role != "moderator" {
 		rows, err = s.db.Query(ctx, `
-			SELECT *
+			SELECT house_id, number, price, rooms
 			FROM flats
 			WHERE house_id = $1 and status = 'approved'
 		`, id)
@@ -136,8 +145,6 @@ func (s *Storage) GetFlats(id int64, role string) ([]entity.Flat, error) {
 	for rows.Next() {
 		var flat entity.Flat
 		err := rows.Scan(
-			&flat.ID,
-			&flat.UserID,
 			&flat.HouseID,
 			&flat.Number,
 			&flat.Price,
@@ -155,6 +162,30 @@ func (s *Storage) GetFlats(id int64, role string) ([]entity.Flat, error) {
 	}
 
 	return flats, nil
+}
+
+func (s *Storage) CreateFlat(flat entity.Flat) error {
+	const fn = "storage.postgres.CreateFlag"
+
+	query, args, err := squirrel.
+		Insert("flats").
+		Columns("house_id", "number", "price", "rooms", "status").
+		Values(flat.HouseID, flat.Number, flat.Price, flat.Rooms, "created").
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", fn, err)
+	}
+
+	ctx := context.Background()
+	_, err = s.db.Exec(ctx, query, args...)
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", fn, err)
+	}
+
+	return nil
 }
 
 //CREATE OR REPLACE FUNCTION update_last_flat_added()

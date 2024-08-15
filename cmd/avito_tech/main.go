@@ -3,6 +3,7 @@ package main
 import (
 	"avito_tech/internal/config"
 	"avito_tech/internal/http_server/handlers/auth"
+	"avito_tech/internal/http_server/handlers/flat"
 	"avito_tech/internal/http_server/handlers/house"
 	"avito_tech/internal/lib/logger/slg"
 	"avito_tech/internal/storage/postgres"
@@ -39,8 +40,11 @@ func main() {
 	router.Use(middleware.URLFormat)
 
 	router.Get("/dummyLogin", auth.DummyLogin(log))
+	router.Post("/flat/create", auth.JWTAuth(log, flat.Create(log, storage)))
+	//router.Post("/flat/update")
+	//router.Post("/login")
 	//router.Post("/register")
-	router.Post("/house/create", auth.RequireModerator(log, auth.JWTAuth(log, house.Create(log, storage))))
+	router.Post("/house/create", auth.JWTAuth(log, auth.RequireModerator(log, house.Create(log, storage))))
 	router.Get("/house/{id}", auth.JWTAuth(log, house.Flats(log, storage)))
 
 	log.Info("starting server", slog.String("address", cfg.Address))
@@ -80,11 +84,14 @@ func setupLogger(env string) *slog.Logger {
 	return log
 }
 
-// /dummyLogin get
-// /register post
-// /login post
-// /house/create post
-// /house/{id} get
-// /house/{id}/subscribe post
+// /dummyLogin get +
+// /house/create post +
+// /house/{id} get +
+
 // /flat/create post
 // /flat/update post
+
+// /register post
+// /login post
+
+// /house/{id}/subscribe post
