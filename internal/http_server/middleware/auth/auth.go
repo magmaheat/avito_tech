@@ -55,8 +55,7 @@ func JWTAuth(log *slog.Logger, next http.Handler) http.HandlerFunc {
 			username, _ := uuid.Parse(usernameString)
 
 			ctx := context.WithValue(r.Context(), "role", role)
-			ctx = context.WithValue(r.Context(), "username", username)
-			log.Info("Role and username added to context", slog.String("role", role), slog.String("username", username.String()))
+			ctx = context.WithValue(ctx, "username", username)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {
 			log.Error("message", slg.Err(err))
@@ -68,7 +67,7 @@ func JWTAuth(log *slog.Logger, next http.Handler) http.HandlerFunc {
 
 func RequireModerator(log *slog.Logger, next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const fn = "handlers.auth.JWTRole"
+		const fn = "handlers.auth.RequireModerator"
 		reqID := middleware.GetReqID(r.Context())
 		role, ok := r.Context().Value("role").(string)
 

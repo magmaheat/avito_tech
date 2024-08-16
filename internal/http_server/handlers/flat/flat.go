@@ -79,6 +79,7 @@ func Update(log *slog.Logger, storage Storage) http.HandlerFunc {
 			log.Error(message, slg.Err(err))
 			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, map[string]string{"error": message})
+			return
 		}
 
 		log.Info("flat update", slog.Any("request", reqID))

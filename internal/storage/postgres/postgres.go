@@ -64,7 +64,7 @@ func New(storagePath string) (*Storage, error) {
 			price INTEGER NOT NULL CHECK (price >= 0),
 			rooms INTEGER NOT NULL CHECK (rooms >= 1),
 			status VARCHAR(50) NOT NULL CHECK (status IN ('created', 'approved', 'declined', 'on moderation')),
-			last_mod_id UUID NULL
+			last_moderator_id UUID NULL
 		    );
 	`)
 
@@ -235,14 +235,15 @@ func (s *Storage) Update(flat entity.Flat, idMod uuid.UUID) error {
 			squirrel.Eq{"id": flat.ID},
 			squirrel.Or{
 				squirrel.NotEq{"status": "on moderation"},
-				squirrel.Eq{"id_moderator": idMod},
+				squirrel.Eq{"last_moderator_id": idMod},
 			},
 		}).
 		Set("house_id", flat.HouseID).
 		Set("number", flat.Number).
 		Set("price", flat.Price).
+		Set("rooms", flat.Rooms).
 		Set("status", flat.Status).
-		Set("last_mod_id", idMod).
+		Set("last_moderator_id", idMod).
 		PlaceholderFormat(squirrel.Dollar)
 
 	query, args, err := queryBuilder.ToSql()
@@ -250,9 +251,14 @@ func (s *Storage) Update(flat entity.Flat, idMod uuid.UUID) error {
 		return fmt.Errorf("failed to build query %s: %w", fn, err)
 	}
 
-	_, err = s.db.Exec(context.Background(), query, args...)
+	res, err := s.db.Exec(context.Background(), query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to update flat %s: %w", fn, err)
+	}
+
+	rowsAffected := res.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("no rows were update %s", fn)
 	}
 
 	return nil
