@@ -10,13 +10,13 @@ import (
 	"net/http"
 )
 
-//go:generate go run github.com/vektra/mockery/v2@latest --name=Storage
-type Storage interface {
+//go:generate go run github.com/vektra/mockery/v2@latest --name=FlatStorage
+type FlatStorage interface {
 	CreateF(flat entity.Flat) (int64, error)
 	Update(flat entity.Flat, idMod uuid.UUID) error
 }
 
-func Create(log *slog.Logger, storage Storage) http.HandlerFunc {
+func Create(log *slog.Logger, storage FlatStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const fn = "handlers.flat.Create"
 		reqID := middleware.GetReqID(r.Context())
@@ -56,7 +56,7 @@ func Create(log *slog.Logger, storage Storage) http.HandlerFunc {
 	}
 }
 
-func Update(log *slog.Logger, storage Storage) http.HandlerFunc {
+func Update(log *slog.Logger, storage FlatStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const fn = "handlers.flat.Update"
 		reqID := middleware.GetReqID(r.Context())

@@ -14,10 +14,9 @@ import (
 	"time"
 )
 
-//go:generate go run github.com/vektra/mockery/v2@latest --name=Storage
-type Storage interface {
+//go:generate go run github.com/vektra/mockery/v2@latest --name=AuthStorage
+type AuthStorage interface {
 	CreateUser(user entity.User, hashPassword string) (uuid.UUID, error)
-	//Register()
 }
 
 type ResponseDummyLogin struct {
@@ -30,7 +29,7 @@ type ResponseDummyLogin struct {
 
 var MySigningKey = []byte(os.Getenv("MY_SIGNING_KEY"))
 
-func DummyLogin(log *slog.Logger, storage Storage) http.HandlerFunc {
+func DummyLogin(log *slog.Logger, storage AuthStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const fn = "handlers.auth.DummyLogin"
 		reqID := middleware.GetReqID(r.Context())
@@ -100,7 +99,7 @@ func DummyLogin(log *slog.Logger, storage Storage) http.HandlerFunc {
 	}
 }
 
-func Register(log *slog.Logger, storage Storage) http.HandlerFunc {
+func Register(log *slog.Logger, storage AuthStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const fn = "handlers.auth.register"
 		reqID := middleware.GetReqID(r.Context())
