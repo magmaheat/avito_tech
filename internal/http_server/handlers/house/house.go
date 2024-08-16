@@ -22,6 +22,7 @@ type ResponseFlats struct {
 	Flat   []entity.Flat `json:"flat"`
 }
 
+//go:generate go run github.com/vektra/mockery/v2@latest --name=Storage
 type Storage interface {
 	CreateH(house entity.House) (int64, error)
 	GetFlats(idHouse int64, role string) ([]entity.Flat, error)

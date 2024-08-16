@@ -10,6 +10,7 @@ import (
 	"net/http"
 )
 
+//go:generate go run github.com/vektra/mockery/v2@latest --name=Storage
 type Storage interface {
 	CreateF(flat entity.Flat) (int64, error)
 	Update(flat entity.Flat, idMod uuid.UUID) error

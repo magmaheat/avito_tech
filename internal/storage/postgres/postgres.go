@@ -83,6 +83,34 @@ func New(storagePath string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
 
+	_, err = pool.Exec(ctx, `
+		CREATE OR REPLACE FUNCTION func_update_at()
+		RETURNS TRIGGER AS $$
+		BEGIN
+			UPDATE houses
+			SET update_at = CURRENT_TIMESTAMP
+			WHERE id = NEW.house_id;
+			RETURN NEW;
+		END;
+		$$ LANGUAGE plpgsql;
+	`)
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	_, err = pool.Exec(ctx, `
+		CREATE TRIGGER func_update_at_trigger
+		AFTER INSERT ON flats
+		FOR EACH ROW
+		EXECUTE FUNCTION func_update_at();
+	`)
+
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+
 	return &Storage{db: pool}, nil
 }
 
@@ -276,24 +304,3 @@ func checkFlat(flat entity.Flat) bool {
 
 	return true
 }
-
-//func (s *Storage) checkStatus(id int64) {
-//	const fn = "storage.postgres.checkStatus"
-//
-//	row, err := s.db.Query("")
-//}
-
-//CREATE OR REPLACE FUNCTION update_last_flat_added()
-//RETURNS TRIGGER AS $$
-//BEGIN
-//UPDATE houses
-//SET last_flat_added = CURRENT_TIMESTAMP
-//WHERE id = NEW.house_id;
-//RETURN NEW;
-//END;
-//$$ LANGUAGE plpgsql;
-
-//CREATE TRIGGER update_last_apartment_added_trigger
-//AFTER INSERT ON flats
-//FOR EACH ROW
-//EXECUTE FUNCTION update_last_apartment_added();

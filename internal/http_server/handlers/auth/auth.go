@@ -14,6 +14,7 @@ import (
 	"time"
 )
 
+//go:generate go run github.com/vektra/mockery/v2@latest --name=Storage
 type Storage interface {
 	CreateUser(user entity.User, hashPassword string) (uuid.UUID, error)
 	//Register()
