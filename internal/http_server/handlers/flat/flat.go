@@ -12,7 +12,7 @@ import (
 
 type Storage interface {
 	CreateF(flat entity.Flat) (int64, error)
-	//Update(flat entity.Flat) error
+	Update(flat entity.Flat, idMod uuid.UUID) error
 }
 
 func Create(log *slog.Logger, storage Storage) http.HandlerFunc {
@@ -59,6 +59,7 @@ func Update(log *slog.Logger, storage Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const fn = "handlers.flat.Update"
 		reqID := middleware.GetReqID(r.Context())
+		username := r.Context().Value("username").(uuid.UUID)
 
 		log = slg.SetupLogger(fn, reqID)
 
@@ -72,5 +73,16 @@ func Update(log *slog.Logger, storage Storage) http.HandlerFunc {
 			return
 		}
 
+		err = storage.Update(flat, username)
+		if err != nil {
+			message := "failed to update flat"
+			log.Error(message, slg.Err(err))
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]string{"error": message})
+		}
+
+		log.Info("flat update", slog.Any("request", reqID))
+
+		render.JSON(w, r, flat)
 	}
 }

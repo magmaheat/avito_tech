@@ -46,7 +46,6 @@ func JWTAuth(log *slog.Logger, next http.Handler) http.HandlerFunc {
 			role, okRole := claims["role"].(string)
 			usernameString, okName := claims["username"].(string)
 
-			//log.Info("username", string(usernameBytes))
 			if !okRole || !okName {
 				render.Status(r, http.StatusForbidden)
 				render.JSON(w, r, map[string]string{"error": "Forbidden"})
@@ -57,6 +56,7 @@ func JWTAuth(log *slog.Logger, next http.Handler) http.HandlerFunc {
 
 			ctx := context.WithValue(r.Context(), "role", role)
 			ctx = context.WithValue(r.Context(), "username", username)
+			log.Info("Role and username added to context", slog.String("role", role), slog.String("username", username.String()))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {
 			log.Error("message", slg.Err(err))
@@ -70,7 +70,15 @@ func RequireModerator(log *slog.Logger, next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const fn = "handlers.auth.JWTRole"
 		reqID := middleware.GetReqID(r.Context())
-		role := r.Context().Value("role").(string)
+		role, ok := r.Context().Value("role").(string)
+
+		if !ok {
+			message := "failed to get role"
+			log.Error(message, fn)
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]string{"error": message})
+			return
+		}
 
 		log = slg.SetupLogger(fn, reqID)
 

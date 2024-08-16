@@ -60,11 +60,12 @@ func New(storagePath string) (*Storage, error) {
 			id SERIAL PRIMARY KEY,
 			user_id UUID NOT NULL REFERENCES users(id),
 			house_id INTEGER NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
-			number INTEGER NOT NULL,
+			number INTEGER NOT NULL CHECK (number >= 1),
 			price INTEGER NOT NULL CHECK (price >= 0),
 			rooms INTEGER NOT NULL CHECK (rooms >= 1),
-			status VARCHAR(50) NOT NULL CHECK (status IN ('created', 'approved', 'declined', 'on moderation'))
-		);
+			status VARCHAR(50) NOT NULL CHECK (status IN ('created', 'approved', 'declined', 'on moderation')),
+			last_mod_id UUID NULL
+		    );
 	`)
 
 	if err != nil {
@@ -222,11 +223,53 @@ func (s *Storage) CreateF(flat entity.Flat) (int64, error) {
 	return id, nil
 }
 
-//
-//func (s *Storage) Update(flat entity.Flat) error {
-//	const fn = "storage.postgres.Update"
-//
-//}
+func (s *Storage) Update(flat entity.Flat, idMod uuid.UUID) error {
+	const fn = "storage.postgres.Update"
+
+	if !checkFlat(flat) {
+		return fmt.Errorf("invalid arguments: %s", fn)
+	}
+
+	queryBuilder := squirrel.Update("flats").
+		Where(squirrel.And{
+			squirrel.Eq{"id": flat.ID},
+			squirrel.Or{
+				squirrel.NotEq{"status": "on moderation"},
+				squirrel.Eq{"id_moderator": idMod},
+			},
+		}).
+		Set("house_id", flat.HouseID).
+		Set("number", flat.Number).
+		Set("price", flat.Price).
+		Set("status", flat.Status).
+		Set("last_mod_id", idMod).
+		PlaceholderFormat(squirrel.Dollar)
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build query %s: %w", fn, err)
+	}
+
+	_, err = s.db.Exec(context.Background(), query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to update flat %s: %w", fn, err)
+	}
+
+	return nil
+}
+
+func checkFlat(flat entity.Flat) bool {
+	if flat.ID == 0 ||
+		flat.HouseID == 0 ||
+		flat.Number == 0 ||
+		flat.Price == 0 ||
+		flat.Rooms == 0 ||
+		flat.Status == "" {
+		return false
+	}
+
+	return true
+}
 
 //func (s *Storage) checkStatus(id int64) {
 //	const fn = "storage.postgres.checkStatus"
