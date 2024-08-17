@@ -31,7 +31,7 @@ func Create(log *slog.Logger, storage FlatStorage) http.HandlerFunc {
 			message := "failed to decode request body"
 			log.Error(message, slg.Err(err))
 			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]string{"Error": message})
+			render.JSON(w, r, map[string]string{"message": message})
 			return
 		}
 
@@ -44,7 +44,7 @@ func Create(log *slog.Logger, storage FlatStorage) http.HandlerFunc {
 			message := "failed to add flat"
 			log.Error(message, slg.Err(err))
 			render.Status(r, http.StatusInternalServerError)
-			render.JSON(w, r, map[string]string{"Error": message})
+			render.JSON(w, r, map[string]string{"message": message})
 			return
 		}
 
@@ -70,7 +70,7 @@ func Update(log *slog.Logger, storage FlatStorage) http.HandlerFunc {
 			message := "failed to decode request body"
 			log.Error(message, slg.Err(err))
 			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]string{"error": message})
+			render.JSON(w, r, map[string]string{"message": message})
 			return
 		}
 
@@ -79,7 +79,7 @@ func Update(log *slog.Logger, storage FlatStorage) http.HandlerFunc {
 			message := "failed to update flat"
 			log.Error(message, slg.Err(err))
 			render.Status(r, http.StatusInternalServerError)
-			render.JSON(w, r, map[string]string{"error": message})
+			render.JSON(w, r, map[string]string{"message": message})
 			return
 		}
 

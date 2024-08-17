@@ -3,6 +3,7 @@ package house
 import (
 	"avito_tech/internal/entity"
 	"avito_tech/internal/lib/logger/slg"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -78,7 +79,7 @@ func Flats(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
 		id := chi.URLParam(r, "id")
 		if id == "" {
 			message := "id is empty"
-			log.Info(message)
+			log.Error(message)
 			render.Status(r, http.StatusBadRequest)
 			render.JSON(w, r, map[string]string{"message": message, "request_id": reqID})
 			return
@@ -93,7 +94,7 @@ func Flats(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
 
 		if err != nil {
 			message := "failed to get flats"
-			log.Error(fn, map[string]error{message: err})
+			log.Error(fn, slg.Err(errors.New(message)))
 			render.Status(r, http.StatusInternalServerError)
 			render.JSON(w, r, map[string]string{"message": message, "request_id": reqID})
 			return

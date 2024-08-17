@@ -20,11 +20,11 @@ type AuthStorage interface {
 }
 
 type ResponseDummyLogin struct {
-	ID       uuid.UUID
-	Email    string
-	Password string
-	UserType string
-	Token    string
+	ID       uuid.UUID `json:"id"`
+	Email    string    `json:"email"`
+	Password string    `json:"password"`
+	UserType string    `json:"user_type"`
+	Token    string    `json:"token"`
 }
 
 var MySigningKey = []byte(os.Getenv("MY_SIGNING_KEY"))
@@ -36,30 +36,26 @@ func DummyLogin(log *slog.Logger, storage AuthStorage) http.HandlerFunc {
 
 		log = slg.SetupLogger(fn, reqID)
 
-		var user entity.User
-
-		err := render.DecodeJSON(r.Body, &user)
-		if err != nil {
-			message := "failed to decode request body"
-			log.Error("message", message, slg.Err(err))
+		userType := r.URL.Query().Get("user_type")
+		if userType == "" {
+			log.Error("user_type parameter is missing")
 			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, map[string]string{"message": message})
+			render.JSON(w, r, map[string]string{"message": "user_type parameter is required"})
 			return
 		}
 
-		if user.UserType != "moderator" {
-			user.UserType = "client"
+		user := entity.User{
+			Email:    "dummylogin@gmail.com",
+			Password: "password",
+			UserType: userType,
 		}
-
-		user.Email = "dummylogin@gmail.com"
-		user.Password = "password"
 
 		hashPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
 			message := "failed to generate hash password"
 			log.Error("message", message, slg.Err(err))
 			render.Status(r, http.StatusInternalServerError)
-			render.JSON(w, r, map[string]string{"error": message})
+			render.JSON(w, r, map[string]string{"message": message})
 			return
 		}
 
@@ -68,7 +64,7 @@ func DummyLogin(log *slog.Logger, storage AuthStorage) http.HandlerFunc {
 			message := "failed added user"
 			log.Error("message", message, slg.Err(err))
 			render.Status(r, http.StatusInternalServerError)
-			render.JSON(w, r, map[string]string{"error": message})
+			render.JSON(w, r, map[string]string{"message": message})
 			return
 		}
 

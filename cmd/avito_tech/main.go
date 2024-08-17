@@ -42,12 +42,14 @@ func main() {
 	router.Use(middleware.URLFormat)
 
 	router.Get("/dummyLogin", auth.DummyLogin(log, storage))
-	router.Post("/flat/create", mdr.JWTAuth(log, flat.Create(log, storage)))
-	router.Post("/flat/update", mdr.JWTAuth(log, mdr.RequireModerator(log, flat.Update(log, storage))))
 	//router.Post("/login")
 	//router.Post("/register")
+
 	router.Post("/house/create", mdr.JWTAuth(log, mdr.RequireModerator(log, house.Create(log, storage))))
 	router.Get("/house/{id}", mdr.JWTAuth(log, house.Flats(log, storage)))
+
+	router.Post("/flat/create", mdr.JWTAuth(log, flat.Create(log, storage)))
+	router.Post("/flat/update", mdr.JWTAuth(log, mdr.RequireModerator(log, flat.Update(log, storage))))
 
 	log.Info("starting server", slog.String("address", cfg.Address))
 

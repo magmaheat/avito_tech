@@ -24,8 +24,9 @@ func JWTAuth(log *slog.Logger, next http.Handler) http.HandlerFunc {
 
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
+			log.Error("Unauthorized")
 			render.Status(r, http.StatusUnauthorized)
-			render.JSON(w, r, map[string]string{"error": "Unauthorized"})
+			render.JSON(w, r, map[string]string{"message": "Unauthorized"})
 			return
 		}
 
@@ -38,7 +39,7 @@ func JWTAuth(log *slog.Logger, next http.Handler) http.HandlerFunc {
 			message := "failed check sing token"
 			log.Error(message, slg.Err(err))
 			render.Status(r, http.StatusForbidden)
-			render.JSON(w, r, map[string]string{"error": message})
+			render.JSON(w, r, map[string]string{"message": message})
 			return
 		}
 
@@ -47,8 +48,9 @@ func JWTAuth(log *slog.Logger, next http.Handler) http.HandlerFunc {
 			usernameString, okName := claims["username"].(string)
 
 			if !okRole || !okName {
+				log.Error("Forbidden")
 				render.Status(r, http.StatusForbidden)
-				render.JSON(w, r, map[string]string{"error": "Forbidden"})
+				render.JSON(w, r, map[string]string{"message": "Forbidden"})
 				return
 			}
 
@@ -60,7 +62,7 @@ func JWTAuth(log *slog.Logger, next http.Handler) http.HandlerFunc {
 		} else {
 			log.Error("message", slg.Err(err))
 			render.Status(r, http.StatusUnauthorized)
-			render.JSON(w, r, map[string]string{"error": "Unauthorized"})
+			render.JSON(w, r, map[string]string{"message": "Unauthorized"})
 		}
 	}
 }
@@ -75,7 +77,7 @@ func RequireModerator(log *slog.Logger, next http.Handler) http.HandlerFunc {
 			message := "failed to get role"
 			log.Error(message, fn)
 			render.Status(r, http.StatusInternalServerError)
-			render.JSON(w, r, map[string]string{"error": message})
+			render.JSON(w, r, map[string]string{"message": message})
 			return
 		}
 
@@ -85,7 +87,7 @@ func RequireModerator(log *slog.Logger, next http.Handler) http.HandlerFunc {
 			message := "Forbidden"
 			log.Error(message)
 			render.Status(r, http.StatusForbidden)
-			render.JSON(w, r, map[string]string{"error": message})
+			render.JSON(w, r, map[string]string{"message": message})
 			return
 		}
 

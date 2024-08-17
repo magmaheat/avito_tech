@@ -24,10 +24,10 @@ func New(storagePath string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
 
-	// TODO add sql injections
+	// TODO add sql migration
 	_, err = pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS houses (
-			id INTEGER PRIMARY KEY,
+			id INTEGER PRIMARY KEY CHECK (id >= 1),
 			address TEXT NOT NULL,
 			year INTEGER NOT NULL CHECK (year >= 0),
 			developer TEXT NULL,
@@ -77,13 +77,14 @@ func New(storagePath string) (*Storage, error) {
 		CREATE INDEX IF NOT EXISTS idx_flats_house_id_status
 		ON flats (house_id, status);
 	`)
-
 	if err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
 
 	_, err = pool.Exec(ctx, `
+		DROP TRIGGER IF EXISTS func_update_at_trigger ON flats;
+
 		CREATE OR REPLACE FUNCTION func_update_at()
 		RETURNS TRIGGER AS $$
 		BEGIN
@@ -93,19 +94,12 @@ func New(storagePath string) (*Storage, error) {
 			RETURN NEW;
 		END;
 		$$ LANGUAGE plpgsql;
-	`)
-	if err != nil {
-		pool.Close()
-		return nil, fmt.Errorf("%s: %w", fn, err)
-	}
 
-	_, err = pool.Exec(ctx, `
 		CREATE TRIGGER func_update_at_trigger
 		AFTER INSERT ON flats
 		FOR EACH ROW
 		EXECUTE FUNCTION func_update_at();
 	`)
-
 	if err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("%s: %w", fn, err)

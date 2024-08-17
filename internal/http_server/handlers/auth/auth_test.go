@@ -1,28 +1,27 @@
 package auth_test
 
 import (
-	"bytes"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-
 	"avito_tech/internal/entity"
 	"avito_tech/internal/http_server/handlers/auth"
 	"avito_tech/internal/http_server/handlers/auth/mocks"
+	"bytes"
+	"encoding/json"
+	"errors"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 )
 
-func TestAuthHandler(t *testing.T) {
-	cases := []struct {
+func TestDummyLogin(t *testing.T) {
+	tests := []struct {
 		name            string
 		userType        string
-		mockError       error
-		expectedStatus  int
 		expectedMessage string
+		expectedStatus  int
+		mockError       error
 	}{
 		{
 			name:           "Success Client",
@@ -30,7 +29,7 @@ func TestAuthHandler(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:           "Success Moderator",
+			name:           "SuccessModerator",
 			userType:       "moderator",
 			expectedStatus: http.StatusOK,
 		},
@@ -38,25 +37,22 @@ func TestAuthHandler(t *testing.T) {
 			name:            "Error Creating User",
 			userType:        "client",
 			expectedMessage: "failed added user",
-		},
-		{
-			name:            "Error Generating Hash Password",
-			userType:        "client",
-			expectedMessage: "failed to generate hash password",
+			expectedStatus:  http.StatusInternalServerError,
+			mockError:       errors.New("mock error"),
 		},
 	}
 
-	for _, tc := range cases {
-		tc := tc
+	for _, tt := range tests {
+		tt := tt
 
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			storageMock := mocks.NewAuthStorage(t)
 
-			if tc.mockError != nil {
+			if tt.mockError != nil {
 				storageMock.On("CreateUser", mock.Anything, mock.Anything).
-					Return(uuid.Nil, tc.mockError).Once()
+					Return(uuid.Nil, tt.mockError).Once()
 			} else {
 				storageMock.On("CreateUser", mock.Anything, mock.Anything).
 					Return(uuid.New(), nil).Once()
@@ -65,7 +61,7 @@ func TestAuthHandler(t *testing.T) {
 			handler := auth.DummyLogin(nil, storageMock)
 
 			user := entity.User{
-				UserType: tc.userType,
+				UserType: tt.userType,
 			}
 
 			input, err := json.Marshal(user)
@@ -78,14 +74,35 @@ func TestAuthHandler(t *testing.T) {
 
 			handler.ServeHTTP(rr, req)
 
-			require.Equal(t, tc.expectedStatus, rr.Code)
+			require.Equal(t, tt.expectedStatus, rr.Code)
 
-			if tc.expectedMessage != "" {
+			if tt.expectedMessage != "" {
 				var response map[string]string
 				err = json.Unmarshal(rr.Body.Bytes(), &response)
 				require.NoError(t, err)
-				require.Equal(t, tc.expectedMessage, response["message"])
+				require.Equal(t, tt.expectedMessage, response["message"])
 			}
 		})
 	}
 }
+
+//func TestRegister(t *testing.T) {
+//	type args struct {
+//		log     *slog.Logger
+//		storage AuthStorage
+//	}
+//	tests := []struct {
+//		name string
+//		args args
+//		want http.HandlerFunc
+//	}{
+//		// TODO: Add test cases.
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			if got := Register(tt.args.log, tt.args.storage); !reflect.DeepEqual(got, tt.want) {
+//				t.Errorf("Register() = %v, want %v", got, tt.want)
+//			}
+//		})
+//	}
+//}
