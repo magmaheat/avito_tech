@@ -6,6 +6,7 @@ import (
 	"avito_tech/internal/http_server/handlers/flat"
 	"avito_tech/internal/http_server/handlers/house"
 	mdr "avito_tech/internal/http_server/middleware/auth"
+	send "avito_tech/internal/http_server/sender"
 	"avito_tech/internal/lib/logger/slg"
 	"avito_tech/internal/storage/postgres"
 	"github.com/go-chi/chi/v5"
@@ -23,8 +24,8 @@ const (
 
 func main() {
 
-	os.Setenv("MY_SIGNING_KEY", "pussy")
-	os.Setenv("CONFIG_PATH", "../../config/local.yaml")
+	//os.Setenv("MY_SIGNING_KEY", "pussy")
+	//os.Setenv("CONFIG_PATH", "../../config/local.yaml")
 	cfg := config.MustLoad()
 
 	log := setupLogger(cfg.Env)
@@ -35,20 +36,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	sender := send.New()
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.Recoverer)
-	router.Use(middleware.URLFormat)
 
 	router.Get("/dummyLogin", auth.DummyLogin(log, storage))
-	//router.Post("/login")
-	//router.Post("/register")
+	router.Post("/login", auth.Login(log, storage))
+	router.Post("/register", auth.Register(log, storage))
 
 	router.Post("/house/create", mdr.JWTAuth(log, mdr.RequireModerator(log, house.Create(log, storage))))
 	router.Get("/house/{id}", mdr.JWTAuth(log, house.Flats(log, storage)))
+	router.Post("/house/{id}/subscribe", house.Subscribe(log, storage))
 
-	router.Post("/flat/create", mdr.JWTAuth(log, flat.Create(log, storage)))
+	router.Post("/flat/create", mdr.JWTAuth(log, flat.Create(log, storage, sender)))
 	router.Post("/flat/update", mdr.JWTAuth(log, mdr.RequireModerator(log, flat.Update(log, storage))))
 
 	log.Info("starting server", slog.String("address", cfg.Address))
@@ -87,15 +89,3 @@ func setupLogger(env string) *slog.Logger {
 
 	return log
 }
-
-// /dummyLogin get +
-// /house/create post +
-// /house/{id} get +
-
-// /flat/create post
-// /flat/update post
-
-// /register post
-// /login post
-
-// /house/{id}/subscribe post

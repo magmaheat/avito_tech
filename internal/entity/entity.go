@@ -30,3 +30,8 @@ type User struct {
 	Password string    `json:"password"`
 	UserType string    `json:"user_type"`
 }
+
+type Subscription struct {
+	HouseID int    `json:"house_id"`
+	Email   string `json:"email"`
+}

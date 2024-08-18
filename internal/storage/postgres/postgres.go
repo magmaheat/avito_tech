@@ -43,10 +43,10 @@ func New(storagePath string) (*Storage, error) {
 
 	_, err = pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS users (
-		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-		email TEXT NOT NULL,
-		password TEXT NOT NULL,
-		user_type VARCHAR(50) NOT NULL DEFAULT 'client' CHECK (user_type IN ('client', 'moderator'))
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			email TEXT NOT NULL UNIQUE CHECK (length(email) > 0),
+			password TEXT NOT NULL,
+			user_type VARCHAR(50) NOT NULL DEFAULT 'client' CHECK (user_type IN ('client', 'moderator'))
 		);
 	`)
 
@@ -59,13 +59,27 @@ func New(storagePath string) (*Storage, error) {
 		CREATE TABLE IF NOT EXISTS flats (
 			id SERIAL PRIMARY KEY,
 			user_id UUID NOT NULL REFERENCES users(id),
-			house_id INTEGER NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
+			house_id INTEGER NOT NULL REFERENCES houses(id),
 			number INTEGER NOT NULL CHECK (number >= 1),
 			price INTEGER NOT NULL CHECK (price >= 0),
 			rooms INTEGER NOT NULL CHECK (rooms >= 1),
 			status VARCHAR(50) NOT NULL CHECK (status IN ('created', 'approved', 'declined', 'on moderation')),
 			last_moderator_id UUID NULL
-		    );
+		);
+	`)
+
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("%s: %w", fn, err)
+	}
+
+	_, err = pool.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS subscriptions (
+			id SERIAL PRIMARY KEY,
+			house_id INT NOT NULL,
+			email TEXT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
 	`)
 
 	if err != nil {
@@ -108,13 +122,13 @@ func New(storagePath string) (*Storage, error) {
 	return &Storage{db: pool}, nil
 }
 
-func (s *Storage) CreateUser(user entity.User, hashPassword string) (uuid.UUID, error) {
+func (s *Storage) CreateUser(user entity.User) (uuid.UUID, error) {
 	const fn = "storage.postgres.CreateUser"
 
 	query, args, err := squirrel.
 		Insert("users").
 		Columns("email", "password", "user_type").
-		Values(user.Email, hashPassword, user.UserType).
+		Values(user.Email, user.Password, user.UserType).
 		Suffix("RETURNING id").
 		PlaceholderFormat(squirrel.Dollar).
 		ToSql()
@@ -219,7 +233,7 @@ func (s *Storage) GetFlats(id int64, role string) ([]entity.Flat, error) {
 }
 
 func (s *Storage) CreateF(flat entity.Flat) (int64, error) {
-	const fn = "storage.postgres.CreateFlag"
+	const fn = "storage.postgres.CreateFlat"
 
 	query, args, err := squirrel.
 		Insert("flats").
@@ -284,6 +298,111 @@ func (s *Storage) Update(flat entity.Flat, idMod uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func (s *Storage) Register(user entity.User) (string, error) {
+	const fn = "storage.postgres.Register"
+
+	queryBuilder := squirrel.Insert("users").
+		Columns("email", "password", "user_type").
+		Values(user.Email, user.Password, user.UserType).
+		Suffix("RETURNING id").
+		PlaceholderFormat(squirrel.Dollar)
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return "", fmt.Errorf("failed to build query: %s", fn)
+	}
+
+	var id string
+	ctx := context.Background()
+
+	err = s.db.QueryRow(ctx, query, args...).Scan(&id)
+	if err != nil {
+		return "", fmt.Errorf("invalid argument: %s", fn)
+	}
+
+	return id, nil
+}
+
+func (s *Storage) Login(email string) (entity.User, error) {
+	const fn = "storage.postgres.Login"
+
+	queryBuilder := squirrel.Select("id", "password", "user_type").
+		From("users").
+		Where(squirrel.Eq{"email": email}).
+		PlaceholderFormat(squirrel.Dollar)
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return entity.User{}, fmt.Errorf("failed to build query: %s", fn)
+	}
+
+	var user entity.User
+	ctx := context.Background()
+
+	err = s.db.QueryRow(ctx, query, args...).Scan(&user.ID, &user.Password, &user.UserType)
+	if err != nil {
+		return entity.User{}, fmt.Errorf("user not found: %s", fn)
+	}
+
+	return user, nil
+}
+
+func (s *Storage) Subscribe(sub entity.Subscription) error {
+	queryBuilder := squirrel.Insert("subscriptions").
+		Columns("house_id", "email").
+		Values(sub.HouseID, sub.Email).
+		PlaceholderFormat(squirrel.Dollar)
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return fmt.Errorf("failed to build query: %v", err)
+	}
+
+	ctx := context.Background()
+
+	_, err = s.db.Exec(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %v", err)
+	}
+
+	return nil
+}
+
+func (s *Storage) GetSubscribers(houseID int64) ([]string, error) {
+	const fn = "storage.postgres.GetSubscribers"
+
+	queryBuilder := squirrel.Select("email").
+		From("subscriptions").
+		Where(squirrel.Eq{"house_id": houseID}).
+		PlaceholderFormat(squirrel.Dollar)
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build query: %s, %v", fn, err)
+	}
+
+	ctx := context.Background()
+
+	rows, err := s.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %s, %v", fn, err)
+	}
+	defer rows.Close()
+
+	var emails []string
+
+	for rows.Next() {
+		var email string
+		err = rows.Scan(&email)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan row: %s, %v", fn, err)
+		}
+		emails = append(emails, email)
+	}
+
+	return emails, nil
 }
 
 func checkFlat(flat entity.Flat) bool {

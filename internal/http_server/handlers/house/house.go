@@ -27,6 +27,7 @@ type ResponseGetFlats struct {
 type HouseStorage interface {
 	CreateH(house entity.House) (int64, error)
 	GetFlats(idHouse int64, role string) ([]entity.Flat, error)
+	Subscribe(sub entity.Subscription) error
 }
 
 func Create(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
@@ -106,5 +107,60 @@ func Flats(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
 			Status: "Ok",
 			Flat:   resFlats,
 		})
+	}
+}
+
+func Subscribe(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const fn = "handlers.house.Subscribe"
+		reqID := middleware.GetReqID(r.Context())
+
+		log = slg.SetupLogger(fn, reqID)
+
+		houseID := chi.URLParam(r, "id")
+		if houseID == "" {
+			message := "house_id is required"
+
+			log.Error(message)
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]string{"message": message})
+			return
+		}
+
+		var sub entity.Subscription
+
+		err := render.DecodeJSON(r.Body, &sub)
+		if err != nil {
+			message := "failed to decode"
+
+			log.Error(message)
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]string{"message": message})
+			return
+		}
+
+		sub.HouseID, err = strconv.Atoi(houseID)
+		if err != nil {
+			message := "invalid house_id"
+
+			log.Error(message)
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, map[string]string{"message": message})
+			return
+		}
+
+		err = storage.Subscribe(sub)
+		if err != nil {
+			message := "failed to subscribe"
+
+			log.Error(message)
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]string{"message": message})
+			return
+		}
+
+		log.Info("User subscribed to house updates", slog.Any("request", reqID))
+
+		render.JSON(w, r, map[string]string{"message": "You subscribed!"})
 	}
 }

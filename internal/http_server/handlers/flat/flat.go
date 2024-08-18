@@ -2,7 +2,9 @@ package flat
 
 import (
 	"avito_tech/internal/entity"
+	"avito_tech/internal/http_server/sender"
 	"avito_tech/internal/lib/logger/slg"
+	"fmt"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
@@ -14,9 +16,10 @@ import (
 type FlatStorage interface {
 	CreateF(flat entity.Flat) (int64, error)
 	Update(flat entity.Flat, idMod uuid.UUID) error
+	GetSubscribers(houseID int64) ([]string, error)
 }
 
-func Create(log *slog.Logger, storage FlatStorage) http.HandlerFunc {
+func Create(log *slog.Logger, storage FlatStorage, sender *sender.Sender) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const fn = "handlers.flat.Create"
 		reqID := middleware.GetReqID(r.Context())
@@ -49,6 +52,27 @@ func Create(log *slog.Logger, storage FlatStorage) http.HandlerFunc {
 		}
 
 		log.Info("flat added", slog.Any("request", reqID))
+
+		go func() {
+			subscribers, err := storage.GetSubscribers(flat.HouseID)
+			if err != nil {
+				log.Error("failed to get subscribers", slg.Err(err))
+				return
+			}
+
+			message := fmt.Sprintf("New flat added in house %d: Number %d, Price %d, Rooms %d, Status %s", flat.HouseID, flat.Number, flat.Price, flat.Rooms, flat.Status)
+
+			log.Info(message)
+
+			for _, email := range subscribers {
+				err := sender.SendEmail(r.Context(), email, message)
+				if err != nil {
+					log.Error("failed to send email", slg.Err(err))
+				}
+
+				log.Info("message sent by email " + email)
+			}
+		}()
 
 		flat.ID = id
 		flat.Status = "created"

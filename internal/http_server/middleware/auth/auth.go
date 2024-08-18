@@ -94,3 +94,32 @@ func RequireModerator(log *slog.Logger, next http.Handler) http.HandlerFunc {
 		next.ServeHTTP(w, r)
 	}
 }
+
+//func Validate(log *slog.Logger, next http.Handler) http.HandlerFunc {
+//	return func(w http.ResponseWriter, r *http.Request) {
+//		const fn = "middleware.auth.Validate"
+//		reqID := middleware.GetReqID(r.Context())
+//
+//		log = slg.SetupLogger(fn, reqID)
+//
+//		var user entity.User
+//
+//		err := render.DecodeJSON(r.Body, &user)
+//		if err != nil {
+//			message := "failed to decode"
+//
+//			log.Error(message)
+//			render.Status(r, http.StatusBadRequest)
+//			render.JSON(w, r, map[string]string{"message": message})
+//		}
+//
+//		if !auth.IsValidEmail(user.Email) || user.Password == "" {
+//			message := "invalid data"
+//
+//			log.Error(message)
+//			render.Status(r, http.StatusBadRequest)
+//			render.JSON(w, r, map[string]string{"message": message})
+//		}
+//
+//	}
+//}
