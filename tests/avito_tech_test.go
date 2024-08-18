@@ -4,6 +4,7 @@ import (
 	"avito_tech/internal/entity"
 	"net/http"
 	"net/url"
+	"regexp"
 	"testing"
 
 	"github.com/gavv/httpexpect/v2"
@@ -13,6 +14,11 @@ const (
 	host = "localhost:8082"
 )
 
+var (
+	tokenModerator = ""
+	tokenClient    = ""
+)
+
 func TestAvitoTechDummyLogin(t *testing.T) {
 	u := url.URL{
 		Scheme: "http",
@@ -20,23 +26,33 @@ func TestAvitoTechDummyLogin(t *testing.T) {
 	}
 	e := httpexpect.Default(t, u.String())
 
-	e.GET("/dummyLogin").
+	response := e.GET("/dummyLogin").
 		WithQuery("user_type", "moderator").
 		Expect().
 		Status(http.StatusOK).
 		JSON().Object().
 		ContainsKey("token").
-		Value("token").String().NotEmpty().
-		Match(`^[\w-]+\.[\w-]+\.[\w-]+$`)
+		Value("token").String().NotEmpty()
 
-	e.GET("/dummyLogin").
+	tokenModerator = response.Raw()
+
+	if !regexp.MustCompile(`^[\w-]+\.[\w-]+\.[\w-]+$`).MatchString(tokenModerator) {
+		t.Fatalf("token does not match the expected format: %s", tokenModerator)
+	}
+
+	response = e.GET("/dummyLogin").
 		WithQuery("user_type", "client").
 		Expect().
 		Status(http.StatusOK).
 		JSON().Object().
 		ContainsKey("token").
-		Value("token").String().NotEmpty().
-		Match(`^[\w-]+\.[\w-]+\.[\w-]+$`)
+		Value("token").String().NotEmpty()
+
+	tokenClient = response.Raw()
+
+	if !regexp.MustCompile(`^[\w-]+\.[\w-]+\.[\w-]+$`).MatchString(tokenClient) {
+		t.Fatalf("token does not match the expected format: %s", tokenClient)
+	}
 
 	e.GET("/dummyLogin").
 		WithQuery("user_type", "hacker").
@@ -50,23 +66,6 @@ func TestAvitoTechHouseCreate(t *testing.T) {
 		Scheme: "http",
 		Host:   host,
 	}
-	e := httpexpect.Default(t, u.String())
-
-	response := e.GET("/dummyLogin").
-		WithQuery("user_type", "moderator").
-		Expect().
-		Status(http.StatusOK).
-		JSON().Object()
-
-	tokenModerator := response.Value("token").String().NotEmpty().Raw()
-
-	response = e.GET("/dummyLogin").
-		WithQuery("user_type", "client").
-		Expect().
-		Status(http.StatusOK).
-		JSON().Object()
-
-	tokenClient := response.Value("token").String().NotEmpty().Raw()
 
 	testCases := []struct {
 		name    string
@@ -137,23 +136,6 @@ func TestAvitoTechFlatsCreate(t *testing.T) {
 		Scheme: "http",
 		Host:   host,
 	}
-	e := httpexpect.Default(t, u.String())
-
-	response := e.GET("/dummyLogin").
-		WithQuery("user_type", "moderator").
-		Expect().
-		Status(http.StatusOK).
-		JSON().Object()
-
-	tokenModerator := response.Value("token").String().NotEmpty().Raw()
-
-	response = e.GET("/dummyLogin").
-		WithQuery("user_type", "client").
-		Expect().
-		Status(http.StatusOK).
-		JSON().Object()
-
-	tokenClient := response.Value("token").String().NotEmpty().Raw()
 
 	testCases := []struct {
 		name    string
@@ -204,6 +186,117 @@ func TestAvitoTechFlatsCreate(t *testing.T) {
 			e := httpexpect.Default(t, u.String())
 
 			resp := e.POST("/flat/create").
+				WithHeader("Authorization", "Bearer "+tc.token).
+				WithJSON(tc.request).
+				Expect().
+				Status(tc.status).
+				JSON().Object()
+
+			if tc.message != "" {
+				resp.Value("message").String().IsEqual(tc.message)
+			}
+		})
+	}
+}
+
+func TestAvitoTechFlatUpdate(t *testing.T) {
+	u := url.URL{
+		Scheme: "http",
+		Host:   host,
+	}
+
+	e := httpexpect.Default(t, u.String())
+
+	response := e.GET("/dummyLogin").
+		WithQuery("user_type", "moderator").
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object()
+
+	tokenNewModerator := response.Value("token").String().Raw()
+
+	resp := e.POST("/flat/create").
+		WithHeader("Authorization", "Bearer "+tokenModerator).
+		WithJSON(entity.Flat{
+			HouseID: 7,
+			Number:  197,
+			Rooms:   4,
+			Price:   8900000,
+		}).
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object()
+
+	idFlat := resp.Value("id").Number().Raw()
+
+	testCases := []struct {
+		name    string
+		status  int
+		token   string
+		error   string
+		message string
+		request entity.Flat
+	}{
+		{
+			name:   "moderator update flat",
+			status: http.StatusOK,
+			token:  tokenModerator,
+			request: entity.Flat{
+				ID:      int64(idFlat),
+				HouseID: 7,
+				Number:  197,
+				Rooms:   4,
+				Price:   8900000,
+				Status:  "on moderation",
+			},
+		},
+		{
+			name:    "client update flat",
+			status:  http.StatusForbidden,
+			message: "Forbidden",
+			token:   tokenClient,
+			request: entity.Flat{
+				ID:      int64(idFlat),
+				HouseID: 7,
+				Number:  91,
+				Rooms:   2,
+				Price:   11000000,
+				Status:  "on moderation",
+			},
+		},
+		{
+			name:    "new moderator update flat",
+			status:  http.StatusInternalServerError,
+			message: "failed to update flat",
+			token:   tokenNewModerator,
+			request: entity.Flat{
+				ID:      int64(idFlat),
+				HouseID: 7,
+				Number:  91,
+				Rooms:   2,
+				Price:   11000000,
+				Status:  "on moderation",
+			},
+		},
+		{
+			name:    "not id house",
+			status:  http.StatusInternalServerError,
+			token:   tokenModerator,
+			message: "failed to update flat",
+			request: entity.Flat{
+				ID:     int64(idFlat),
+				Number: 197,
+				Rooms:  3,
+				Price:  8900000,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := httpexpect.Default(t, u.String())
+
+			resp := e.POST("/flat/update").
 				WithHeader("Authorization", "Bearer "+tc.token).
 				WithJSON(tc.request).
 				Expect().
