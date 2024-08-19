@@ -30,18 +30,18 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
 
       - name: Build Docker images
-        run: docker-compose -f docker-compose.yml build
+        run: docker-compose -f docker-compose.yaml build
 
       - name: Start Docker containers
-        run: docker-compose -f docker-compose.yml up -d
+        run: docker-compose -f docker-compose.yaml up -d
 
       - name: Wait for services to be ready
         run: |
-          sleep 30  # Подождите, пока контейнеры полностью запустятся
+          sleep 20
 
       - name: Run functional tests
         run: |
-          docker-compose -f docker-compose.yml exec app go test -v ./tests/
+          docker-compose -f docker-compose.yaml exec app go test -v ./tests/
 
       - name: Stop Docker containers
-        run: docker-compose -f docker-compose.yml down
+        run: docker-compose -f docker-compose.yaml down
