@@ -41,12 +41,12 @@ func (_m *HouseStorage) CreateH(_a0 entity.House) (int64, error) {
 	return r0, r1
 }
 
-// GetFlats provides a mock function with given fields: idHouse, role
-func (_m *HouseStorage) GetFlats(idHouse int64, role string) ([]entity.Flat, error) {
+// GetAllFlats provides a mock function with given fields: idHouse, role
+func (_m *HouseStorage) GetAllFlats(idHouse int64, role string) ([]entity.Flat, error) {
 	ret := _m.Called(idHouse, role)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetFlats")
+		panic("no return value specified for GetAllFlats")
 	}
 
 	var r0 []entity.Flat

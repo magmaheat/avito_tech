@@ -37,7 +37,7 @@ func DummyLogin(log *slog.Logger, storage AuthStorage) http.HandlerFunc {
 		const fn = "handlers.auth.DummyLogin"
 		reqID := middleware.GetReqID(r.Context())
 
-		log = slg.SetupLogger(fn, reqID)
+		log = slg.WithLogger(fn, reqID)
 
 		userType := r.URL.Query().Get("user_type")
 		if userType == "" {
@@ -105,7 +105,7 @@ func Register(log *slog.Logger, storage AuthStorage) http.HandlerFunc {
 		const fn = "handlers.auth.register"
 		reqID := middleware.GetReqID(r.Context())
 
-		log = slg.SetupLogger(fn, reqID)
+		log = slg.WithLogger(fn, reqID)
 
 		var user entity.User
 
@@ -159,7 +159,7 @@ func Login(log *slog.Logger, storage AuthStorage) http.HandlerFunc {
 		const fn = "handlers.auth.register"
 		reqID := middleware.GetReqID(r.Context())
 
-		log = slg.SetupLogger(fn, reqID)
+		log = slg.WithLogger(fn, reqID)
 
 		var user entity.User
 

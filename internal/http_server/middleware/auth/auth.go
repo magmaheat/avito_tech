@@ -20,7 +20,7 @@ func JWTAuth(log *slog.Logger, next http.Handler) http.HandlerFunc {
 		const fn = "handlers.auth.JWTModerator"
 		reqID := middleware.GetReqID(r.Context())
 
-		log = slg.SetupLogger(fn, reqID)
+		log = slg.WithLogger(fn, reqID)
 
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -81,7 +81,7 @@ func RequireModerator(log *slog.Logger, next http.Handler) http.HandlerFunc {
 			return
 		}
 
-		log = slg.SetupLogger(fn, reqID)
+		log = slg.WithLogger(fn, reqID)
 
 		if role != "moderator" {
 			message := "Forbidden"

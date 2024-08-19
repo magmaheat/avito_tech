@@ -118,14 +118,14 @@ func TestGetFlats(t *testing.T) {
 			storageMock := mocks.NewHouseStorage(t)
 
 			if tt.expectedError != nil {
-				storageMock.On("GetFlats", mock.Anything, mock.Anything).
+				storageMock.On("GetAllFlats", mock.Anything, mock.Anything).
 					Return(nil, tt.expectedError).Once()
 			} else {
-				storageMock.On("GetFlats", mock.Anything, mock.Anything).
+				storageMock.On("GetAllFlats", mock.Anything, mock.Anything).
 					Return([]entity.Flat{}, nil).Once()
 			}
 
-			handler := house.Flats(nil, storageMock)
+			handler := house.GetAllFlats(nil, storageMock)
 
 			r := chi.NewRouter()
 			r.Get("/house/{id}", handler)

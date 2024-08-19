@@ -25,7 +25,7 @@ func Create(log *slog.Logger, storage FlatStorage, sender *sender.Sender) http.H
 		reqID := middleware.GetReqID(r.Context())
 		username := r.Context().Value("username").(uuid.UUID)
 
-		log = slg.SetupLogger(fn, reqID)
+		log = slg.WithLogger(fn, reqID)
 
 		var flat entity.Flat
 
@@ -86,7 +86,7 @@ func Update(log *slog.Logger, storage FlatStorage) http.HandlerFunc {
 		reqID := middleware.GetReqID(r.Context())
 		username := r.Context().Value("username").(uuid.UUID)
 
-		log = slg.SetupLogger(fn, reqID)
+		log = slg.WithLogger(fn, reqID)
 
 		var flat entity.Flat
 		err := render.DecodeJSON(r.Body, &flat)

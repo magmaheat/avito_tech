@@ -16,19 +16,13 @@ import (
 	"os"
 )
 
-const (
-	envLocal = "local"
-	envDev   = "dev"
-	envProd  = "prod"
-)
-
 func main() {
 
 	//os.Setenv("MY_SIGNING_KEY", "pussy")
 	//os.Setenv("CONFIG_PATH", "../../config/local.yaml")
 	cfg := config.MustLoad()
 
-	log := setupLogger(cfg.Env)
+	log := slg.SetupLogger(cfg.Env)
 
 	storage, err := postgres.New(cfg.StoragePath)
 	if err != nil {
@@ -68,24 +62,4 @@ func main() {
 	}
 
 	log.Error("server stopped")
-}
-
-func setupLogger(env string) *slog.Logger {
-	var log *slog.Logger
-
-	switch env {
-	case envLocal:
-		log = slog.New(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	case envDev:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
-	case envProd:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		)
-	}
-
-	return log
 }

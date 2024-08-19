@@ -35,7 +35,7 @@ func Create(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
 		const fn = "handlers.house.Create"
 		reqID := middleware.GetReqID(r.Context())
 
-		log = slg.SetupLogger(fn, reqID)
+		log = slg.WithLogger(fn, reqID)
 
 		var req entity.House
 
@@ -75,7 +75,7 @@ func GetAllFlats(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
 		reqID := middleware.GetReqID(r.Context())
 		role := r.Context().Value("role").(string)
 
-		log = slg.SetupLogger(fn, reqID)
+		log = slg.WithLogger(fn, reqID)
 
 		id := chi.URLParam(r, "id")
 		if id == "" {
@@ -115,7 +115,7 @@ func Subscribe(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
 		const fn = "handlers.house.Subscribe"
 		reqID := middleware.GetReqID(r.Context())
 
-		log = slg.SetupLogger(fn, reqID)
+		log = slg.WithLogger(fn, reqID)
 
 		houseID := chi.URLParam(r, "id")
 		if houseID == "" {
