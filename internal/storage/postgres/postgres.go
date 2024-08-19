@@ -182,7 +182,7 @@ func (s *Storage) CreateH(house entity.House) (int64, error) {
 	return id, nil
 }
 
-func (s *Storage) GetFlats(id int64, role string) ([]entity.Flat, error) {
+func (s *Storage) GetAllFlats(id int64, role string) ([]entity.Flat, error) {
 	const fn = "storage.postgres.Get"
 	ctx := context.Background()
 

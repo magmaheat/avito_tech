@@ -26,7 +26,7 @@ type ResponseGetFlats struct {
 //go:generate go run github.com/vektra/mockery/v2@latest --name=HouseStorage
 type HouseStorage interface {
 	CreateH(house entity.House) (int64, error)
-	GetFlats(idHouse int64, role string) ([]entity.Flat, error)
+	GetAllFlats(idHouse int64, role string) ([]entity.Flat, error)
 	Subscribe(sub entity.Subscription) error
 }
 
@@ -69,7 +69,7 @@ func Create(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
 	}
 }
 
-func Flats(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
+func GetAllFlats(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const fn = "handlers.house.Flats"
 		reqID := middleware.GetReqID(r.Context())
@@ -91,7 +91,7 @@ func Flats(log *slog.Logger, storage HouseStorage) http.HandlerFunc {
 		var resFlats []entity.Flat
 		var err error
 
-		resFlats, err = storage.GetFlats(int64(newID), role)
+		resFlats, err = storage.GetAllFlats(int64(newID), role)
 
 		if err != nil {
 			message := "failed to get flats"

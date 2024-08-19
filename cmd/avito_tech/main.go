@@ -47,7 +47,7 @@ func main() {
 	router.Post("/register", auth.Register(log, storage))
 
 	router.Post("/house/create", mdr.JWTAuth(log, mdr.RequireModerator(log, house.Create(log, storage))))
-	router.Get("/house/{id}", mdr.JWTAuth(log, house.Flats(log, storage)))
+	router.Get("/house/{id}", mdr.JWTAuth(log, house.GetAllFlats(log, storage)))
 	router.Post("/house/{id}/subscribe", house.Subscribe(log, storage))
 
 	router.Post("/flat/create", mdr.JWTAuth(log, flat.Create(log, storage, sender)))

@@ -4,15 +4,19 @@ import (
 	"avito_tech/internal/entity"
 	"avito_tech/internal/http_server/handlers/flat"
 	"avito_tech/internal/http_server/handlers/flat/mocks"
+	"avito_tech/internal/http_server/sender"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/agiledragon/gomonkey/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -24,18 +28,47 @@ func TestCreate(t *testing.T) {
 		expectedMessage string
 		expectedError   error
 		userID          uuid.UUID
+		requestBody     interface{}
+		modeCreateFunc  int
 	}{
 		{
 			name:           "Create flat",
 			expectedStatus: http.StatusOK,
 			userID:         uuid.New(),
+			requestBody:    entity.Flat{},
+			modeCreateFunc: 1,
 		},
 		{
 			name:            "error decode",
 			expectedMessage: "failed to add flat",
 			expectedStatus:  http.StatusInternalServerError,
-			expectedError:   errors.New("mock error"),
+			expectedError:   fmt.Errorf("mock error"),
 			userID:          uuid.New(),
+			requestBody:     entity.Flat{},
+			modeCreateFunc:  -1,
+		},
+		{
+			name:            "failed decode",
+			expectedMessage: "failed to decode request body",
+			expectedStatus:  http.StatusBadRequest,
+			expectedError:   fmt.Errorf("mock error"),
+			userID:          uuid.New(),
+			requestBody:     entity.User{},
+		},
+		{
+			name:           "failed get subscribers",
+			expectedStatus: http.StatusOK,
+			userID:         uuid.New(),
+			requestBody:    entity.Flat{},
+			modeCreateFunc: 2,
+			expectedError:  fmt.Errorf("mock error"),
+		},
+		{
+			name:           "failed send",
+			expectedStatus: http.StatusOK,
+			userID:         uuid.New(),
+			requestBody:    entity.Flat{},
+			modeCreateFunc: 3,
 		},
 	}
 
@@ -47,24 +80,41 @@ func TestCreate(t *testing.T) {
 
 			storageMock := mocks.NewFlatStorage(t)
 
-			if tt.expectedError != nil {
-				storageMock.On("CreateF", mock.Anything).
-					Return(int64(-1), tt.expectedError).Once()
-			} else {
+			var patches *gomonkey.Patches
+
+			switch tt.modeCreateFunc {
+			case 1:
 				storageMock.On("CreateF", entity.Flat{UserID: tt.userID}).
 					Return(int64(3), nil).Once()
 
 				storageMock.On("GetSubscribers", mock.Anything).
 					Return([]string{"subscriber1@example.com", "subscriber2@example.com"}, nil).Once()
+			case -1:
+				storageMock.On("CreateF", mock.Anything).
+					Return(int64(-1), tt.expectedError).Once()
+			case 2:
+				storageMock.On("CreateF", entity.Flat{UserID: tt.userID}).
+					Return(int64(3), nil).Once()
+
+				storageMock.On("GetSubscribers", mock.Anything).
+					Return(nil, tt.expectedError).Once()
+
+			case 3:
+				storageMock.On("CreateF", entity.Flat{UserID: tt.userID}).
+					Return(int64(3), nil).Once()
+
+				storageMock.On("GetSubscribers", mock.Anything).
+					Return([]string{"subscriber1@example.com", "subscriber2@example.com"}, nil).Once()
+
+				patches = gomonkey.ApplyMethod(reflect.TypeOf((*sender.Sender)(nil)), "SendEmail", func(s *sender.Sender, ctx context.Context, email, message string) error {
+					return errors.New("mock error")
+				})
+				defer patches.Reset()
 			}
 
 			handler := flat.Create(nil, storageMock, nil)
 
-			flatRequest := entity.Flat{
-				UserID: tt.userID,
-			}
-
-			input, err := json.Marshal(flatRequest)
+			input, err := json.Marshal(tt.requestBody)
 			require.NoError(t, err)
 
 			req, err := http.NewRequest(http.MethodPost, "/flat/create", bytes.NewReader(input))
@@ -98,11 +148,15 @@ func TestUpdate(t *testing.T) {
 		expectedMessage string
 		expectedError   error
 		userID          uuid.UUID
+		requestBody     interface{}
+		modeCreateFunc  int
 	}{
 		{
 			name:           "Update flat",
 			expectedStatus: http.StatusOK,
 			userID:         uuid.New(),
+			requestBody:    entity.Flat{},
+			modeCreateFunc: 1,
 		},
 		{
 			name:            "Error update",
@@ -110,6 +164,15 @@ func TestUpdate(t *testing.T) {
 			expectedStatus:  http.StatusInternalServerError,
 			expectedError:   errors.New("mock error"),
 			userID:          uuid.New(),
+			requestBody:     entity.Flat{},
+			modeCreateFunc:  -1,
+		},
+		{
+			name:           "failed decode",
+			expectedError:  fmt.Errorf("mock error"),
+			expectedStatus: http.StatusBadRequest,
+			userID:         uuid.New(),
+			requestBody:    entity.User{},
 		},
 	}
 
@@ -121,21 +184,18 @@ func TestUpdate(t *testing.T) {
 
 			storageMock := mocks.NewFlatStorage(t)
 
-			if tt.expectedError != nil {
+			switch tt.modeCreateFunc {
+			case -1:
 				storageMock.On("Update", mock.Anything, mock.Anything).
 					Return(tt.expectedError).Once()
-			} else {
-				storageMock.On("Update", entity.Flat{UserID: tt.userID}, tt.userID).
+			case 1:
+				storageMock.On("Update", mock.Anything, tt.userID).
 					Return(nil).Once()
 			}
 
 			handler := flat.Update(nil, storageMock)
 
-			flatRequest := entity.Flat{
-				UserID: tt.userID,
-			}
-
-			input, err := json.Marshal(flatRequest)
+			input, err := json.Marshal(tt.requestBody)
 			require.NoError(t, err)
 
 			req, err := http.NewRequest(http.MethodPost, "/flat/update", bytes.NewReader(input))
