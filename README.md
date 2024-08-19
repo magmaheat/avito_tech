@@ -1,4 +1,4 @@
-[![build](https://github.com/magmaheat/avito_tech/actions/workflows/build.yaml/badge.svg)](https://github.com/magmaheat/avito_tech/actions/workflows/build.yaml)
+[![build](https://github.com/magmaheat/avito_tech/actions/workflows/build.yaml/badge.svg?branch=master)](https://github.com/magmaheat/avito_tech/actions/workflows/build.yaml)
 [![coverage](https://img.shields.io/codecov/c/github/magmaheat/avito_tech/master)](https://codecov.io/gh/magmaheat/avito_tech)
 
 
