@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to ci'
+        required: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build Docker images
+        run: docker-compose -f docker-compose.yml build
+
+      - name: Start Docker containers
+        run: docker-compose -f docker-compose.yml up -d
+
+      - name: Wait for services to be ready
+        run: |
+          sleep 30  # Подождите, пока контейнеры полностью запустятся
+
+      - name: Run functional tests
+        run: |
+          docker-compose -f docker-compose.yml exec app go test -v ./tests/
+
+      - name: Stop Docker containers
+        run: docker-compose -f docker-compose.yml down

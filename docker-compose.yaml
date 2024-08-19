@@ -8,7 +8,6 @@ services:
     container_name: avito_tech
     environment:
       - CONFIG_PATH=/root/config/local.yaml
-      - MY_SIGNING_KEY=pussy
     ports:
       - "8082:8082"
     depends_on:
