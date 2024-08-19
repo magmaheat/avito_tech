@@ -39,15 +39,6 @@ func TestCreate(t *testing.T) {
 			modeCreateFunc: 1,
 		},
 		{
-			name:            "error decode",
-			expectedMessage: "failed to add flat",
-			expectedStatus:  http.StatusInternalServerError,
-			expectedError:   fmt.Errorf("mock error"),
-			userID:          uuid.New(),
-			requestBody:     entity.Flat{},
-			modeCreateFunc:  -1,
-		},
-		{
 			name:            "failed decode",
 			expectedMessage: "failed to decode request body",
 			expectedStatus:  http.StatusBadRequest,
@@ -70,13 +61,21 @@ func TestCreate(t *testing.T) {
 			requestBody:    entity.Flat{},
 			modeCreateFunc: 3,
 		},
+		{
+			name:            "error decode",
+			expectedMessage: "failed to add flat",
+			expectedStatus:  http.StatusInternalServerError,
+			expectedError:   fmt.Errorf("mock error"),
+			userID:          uuid.New(),
+			requestBody:     entity.Flat{},
+			modeCreateFunc:  4,
+		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 
 			storageMock := mocks.NewFlatStorage(t)
 
@@ -89,9 +88,7 @@ func TestCreate(t *testing.T) {
 
 				storageMock.On("GetSubscribers", mock.Anything).
 					Return([]string{"subscriber1@example.com", "subscriber2@example.com"}, nil).Once()
-			case -1:
-				storageMock.On("CreateF", mock.Anything).
-					Return(int64(-1), tt.expectedError).Once()
+
 			case 2:
 				storageMock.On("CreateF", entity.Flat{UserID: tt.userID}).
 					Return(int64(3), nil).Once()
@@ -110,6 +107,10 @@ func TestCreate(t *testing.T) {
 					return errors.New("mock error")
 				})
 				defer patches.Reset()
+
+			case 4:
+				storageMock.On("CreateF", mock.Anything).
+					Return(int64(-1), tt.expectedError).Once()
 			}
 
 			handler := flat.Create(nil, storageMock, nil)
@@ -165,7 +166,7 @@ func TestUpdate(t *testing.T) {
 			expectedError:   errors.New("mock error"),
 			userID:          uuid.New(),
 			requestBody:     entity.Flat{},
-			modeCreateFunc:  -1,
+			modeCreateFunc:  2,
 		},
 		{
 			name:           "failed decode",
@@ -180,17 +181,16 @@ func TestUpdate(t *testing.T) {
 		tt := tt
 
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 
 			storageMock := mocks.NewFlatStorage(t)
 
 			switch tt.modeCreateFunc {
-			case -1:
-				storageMock.On("Update", mock.Anything, mock.Anything).
-					Return(tt.expectedError).Once()
 			case 1:
 				storageMock.On("Update", mock.Anything, tt.userID).
 					Return(nil).Once()
+			case 2:
+				storageMock.On("Update", mock.Anything, mock.Anything).
+					Return(tt.expectedError).Once()
 			}
 
 			handler := flat.Update(nil, storageMock)

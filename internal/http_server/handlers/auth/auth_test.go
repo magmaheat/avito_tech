@@ -248,7 +248,7 @@ func TestLogin(t *testing.T) {
 			expectedStatus:     http.StatusNotFound,
 			expectedMessage:    "user not found",
 			requestBody:        entity.User{},
-			modeCreateMockFunc: -1,
+			modeCreateMockFunc: 3,
 			mockError:          errors.New("user not found: storage.postgres.Login"),
 		},
 		{
@@ -256,7 +256,7 @@ func TestLogin(t *testing.T) {
 			expectedStatus:     http.StatusInternalServerError,
 			expectedMessage:    "failed to build query",
 			requestBody:        entity.User{},
-			modeCreateMockFunc: -1,
+			modeCreateMockFunc: 3,
 			mockError:          errors.New("mock error"),
 		},
 		{
@@ -264,7 +264,7 @@ func TestLogin(t *testing.T) {
 			expectedStatus:     http.StatusUnauthorized,
 			expectedMessage:    "invalid password",
 			requestBody:        entity.User{},
-			modeCreateMockFunc: -2,
+			modeCreateMockFunc: 4,
 			mockError:          fmt.Errorf("mock error"),
 		},
 		{
@@ -295,12 +295,7 @@ func TestLogin(t *testing.T) {
 					return nil
 				})
 				defer patches.Reset()
-			case -1:
-				storageMock.On("Login", mock.Anything).
-					Return(entity.User{}, tt.mockError).Once()
-			case -2:
-				storageMock.On("Login", mock.Anything).
-					Return(entity.User{}, nil).Once()
+
 			case 2:
 				storageMock.On("Login", mock.Anything).
 					Return(entity.User{}, nil).Once()
@@ -322,6 +317,14 @@ func TestLogin(t *testing.T) {
 					return "", errors.New("mock error")
 				})
 				defer patches.Reset()
+
+			case 3:
+				storageMock.On("Login", mock.Anything).
+					Return(entity.User{}, tt.mockError).Once()
+
+			case 4:
+				storageMock.On("Login", mock.Anything).
+					Return(entity.User{}, nil).Once()
 			}
 
 			handler := auth.Login(nil, storageMock)
