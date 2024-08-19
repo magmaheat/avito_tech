@@ -1,4 +1,4 @@
-name: CI
+name: build
 
 on:
   push:
@@ -54,8 +54,29 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Run functional tests
+      - name: Run unit  tests
         run: go test -v ./tests/
 
       - name: Stop Docker containers
         run: docker-compose -f docker-compose.yaml down
+
+      - name: Run unit tests and generate coverage report
+        run: |
+          go test -v -coverprofile=coverage.txt ./internal/http_server/handlers/auth
+          go test -v -coverprofile=auth_coverage.txt ./internal/http_server/handlers/auth
+          go test -v -coverprofile=flat_coverage.txt ./internal/http_server/handlers/flat
+          go test -v -coverprofile=house_coverage.txt ./internal/http_server/handlers/house
+          go tool cover -func=coverage.txt -o=coverage.out
+          go tool cover -func=auth_coverage.txt -o=auth_coverage.out
+          go tool cover -func=flat_coverage.txt -o=flat_coverage.out
+          go tool cover -func=house_coverage.txt -o=house_coverage.out
+          cat auth_coverage.out flat_coverage.out house_coverage.out > coverage.out
+
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.out
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true
