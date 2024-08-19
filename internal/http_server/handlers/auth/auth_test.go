@@ -35,7 +35,7 @@ func TestDummyLogin(t *testing.T) {
 		},
 		{
 			name:            "Error Creating User",
-			userType:        "client",
+			userType:        "hacker",
 			expectedMessage: "failed added user",
 			expectedStatus:  http.StatusInternalServerError,
 			mockError:       errors.New("mock error"),
@@ -67,7 +67,7 @@ func TestDummyLogin(t *testing.T) {
 			input, err := json.Marshal(user)
 			require.NoError(t, err)
 
-			req, err := http.NewRequest(http.MethodGet, "/dummyLogin", bytes.NewReader(input))
+			req, err := http.NewRequest(http.MethodGet, "/dummyLogin?user_type="+user.UserType, bytes.NewReader(input))
 			require.NoError(t, err)
 
 			rr := httptest.NewRecorder()

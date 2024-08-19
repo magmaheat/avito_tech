@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestCreate(t *testing.T) {
@@ -52,9 +53,12 @@ func TestCreate(t *testing.T) {
 			} else {
 				storageMock.On("CreateF", entity.Flat{UserID: tt.userID}).
 					Return(int64(3), nil).Once()
+
+				storageMock.On("GetSubscribers", mock.Anything).
+					Return([]string{"subscriber1@example.com", "subscriber2@example.com"}, nil).Once()
 			}
 
-			handler := flat.Create(nil, storageMock)
+			handler := flat.Create(nil, storageMock, nil)
 
 			flatRequest := entity.Flat{
 				UserID: tt.userID,
@@ -74,6 +78,8 @@ func TestCreate(t *testing.T) {
 			handler.ServeHTTP(rr, req)
 
 			require.Equal(t, tt.expectedStatus, rr.Code)
+
+			time.Sleep(1 * time.Second)
 
 			if tt.expectedMessage != "" {
 				var response map[string]string
