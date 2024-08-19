@@ -1,4 +1,6 @@
-[![CI](https://github.com/magmaheat/avito_tech/actions/workflows/ci.yaml/badge.svg)](https://github.com/magmaheat/avito_tech/actions/workflows/ci.yaml)
+[![coverage](https://codecov.io/gh/magmaheat/avito_tech/branch/master/graph/badge.svg)](https://codecov.io/gh/magmaheat/avito_tech)
+
+Coverage: ...
 
 ## Проблемы, вопросы, рассуждения.
 #### 1. Шире функционал, больше полей в сущности. 
