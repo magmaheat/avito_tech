@@ -1,4 +1,4 @@
-[![coverage](https://codecov.io/gh/magmaheat/avito_tech/branch/master/graph/badge.svg)](https://codecov.io/gh/magmaheat/avito_tech)
+[![coverage](https://img.shields.io/codecov/c/github/magmaheat/avito_tech/master)](https://codecov.io/gh/magmaheat/avito_tech)
 
 Coverage: ...
 
