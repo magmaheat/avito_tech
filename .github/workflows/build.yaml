@@ -59,7 +59,7 @@ jobs:
 
       - name: Run unit tests and generate coverage report
         run: |
-          go test -v -covermode=set -coverprofile=coverage.txt ./internal/http_server/handlers/...
+          go test -v -covermode=set -coverpkg=./internal/http_server/handlers/auth/auth.go,./internal/http_server/handlers/flat/flat.go,./internal/http_server/handlers/house/house.go -coverprofile=coverage.txt
 
       - name: Stop Docker containers
         run: docker-compose -f docker-compose.yaml down
