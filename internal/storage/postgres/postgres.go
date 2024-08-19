@@ -3,6 +3,7 @@ package postgres
 import (
 	"avito_tech/internal/entity"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
@@ -45,7 +46,7 @@ func New(storagePath string) (*Storage, error) {
 		CREATE TABLE IF NOT EXISTS users (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			email TEXT NOT NULL UNIQUE CHECK (length(email) > 0),
-			password TEXT NOT NULL,
+			password TEXT NOT NULL CHECK (length(password) > 0),
 			user_type VARCHAR(50) NOT NULL DEFAULT 'client' CHECK (user_type IN ('client', 'moderator'))
 		);
 	`)
@@ -343,7 +344,7 @@ func (s *Storage) Login(email string) (entity.User, error) {
 
 	err = s.db.QueryRow(ctx, query, args...).Scan(&user.ID, &user.Password, &user.UserType)
 	if err != nil {
-		return entity.User{}, fmt.Errorf("user not found: %s", fn)
+		return entity.User{}, errors.New("user not found: " + fn)
 	}
 
 	return user, nil

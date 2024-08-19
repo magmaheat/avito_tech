@@ -4,8 +4,6 @@ import (
 	"avito_tech/internal/entity"
 	"avito_tech/internal/lib/auth"
 	"avito_tech/internal/lib/logger/slg"
-	"errors"
-	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
@@ -178,7 +176,7 @@ func Login(log *slog.Logger, storage AuthStorage) http.HandlerFunc {
 
 		storageUser, err := storage.Login(user.Email)
 		if err != nil {
-			if errors.Is(err, fmt.Errorf("failed to build query: storage.postgres.Login")) {
+			if err.Error() == "user not found: storage.postgres.Login" {
 				message := "user not found"
 
 				log.Error(message)
