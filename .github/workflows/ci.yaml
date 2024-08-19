@@ -29,6 +29,13 @@ jobs:
           sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
 
+      - name: Verify Docker Compose file
+        run: |
+          if [ ! -f docker-compose.yaml ]; then
+            echo "docker-compose.yaml not found!"
+            exit 1
+          fi
+
       - name: Build Docker images
         run: docker-compose -f docker-compose.yaml build
 
@@ -39,9 +46,16 @@ jobs:
         run: |
           sleep 20
 
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.22.3'
+
+      - name: Install dependencies
+        run: go mod download
+
       - name: Run functional tests
-        run: |
-          docker-compose -f docker-compose.yaml exec app go test -v ./tests/
+        run: go test -v ./tests/
 
       - name: Stop Docker containers
         run: docker-compose -f docker-compose.yaml down
